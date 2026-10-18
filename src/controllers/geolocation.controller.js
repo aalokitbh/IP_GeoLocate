@@ -1,8 +1,17 @@
-
 const { getGeolocation } = require("../services/geolocation.service");
+const { isValidIp } = require("../utils/ipValidator");
 
 async function geolocate(req, res) {
   const { ip } = req.query;
+
+  if (!isValidIp(ip)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: "A valid IPv4 or IPv6 address is required",
+      },
+    });
+  }
 
   try {
     const result = await getGeolocation(ip);
