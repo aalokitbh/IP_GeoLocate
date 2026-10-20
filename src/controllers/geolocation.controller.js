@@ -1,4 +1,8 @@
-const { getGeolocation } = require("../services/geolocation.service");
+const {
+  getGeolocation,
+  GeolocationError,
+} = require("../services/geolocation.service");
+
 const { isValidIp } = require("../utils/ipValidator");
 
 async function geolocate(req, res) {
@@ -21,33 +25,27 @@ async function geolocate(req, res) {
       data: result,
     });
   } catch (error) {
-    console.error("Geolocation lookup failed:", error.message);
+    console.error("Geolocation lookup failed:", error);
 
-    // The external provider returned an unsuccessful lookup.
-    if (error.statusCode === 502) {
-      return res.status(502).json({
+    if (error instanceof GeolocationError) {
+      const messages = {
+        UPSTREAM_TIMEOUT: "Geolocation provider timed out",
+        UPSTREAM_HTTP_ERROR: "Geolocation provider request failed",
+        UPSTREAM_CONNECTION_ERROR:
+          "Unable to reach geolocation provider",
+        UPSTREAM_INVALID_RESPONSE:
+          "Geolocation provider returned an invalid response",
+        UPSTREAM_LOOKUP_FAILED:
+          "Geolocation lookup failed",
+      };
+
+      return res.status(error.statusCode).json({
         success: false,
         error: {
-          message: error.message,
-        },
-      });
-    }
-
-    // The provider timed out or could not be reached.
-    if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
-      return res.status(504).json({
-        success: false,
-        error: {
-          message: "Geolocation provider timed out",
-        },
-      });
-    }
-
-    if (error.response) {
-      return res.status(502).json({
-        success: false,
-        error: {
-          message: "Geolocation provider request failed",
+          code: error.code,
+          message:
+            messages[error.code] ||
+            "Geolocation provider request failed",
         },
       });
     }
